@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create, update: if isOwner(userId) && isValidId(userId);
+      allow delete: if false;
+    }
+
+    // Medicines collection - shared between patients and caregivers
+    match /medicines/{medicineId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(medicineId);
+      allow delete: if isSignedIn() && isValidId(medicineId);
+    }
+
+    // Adherence Logs collection
+    match /adherence_logs/{logId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(logId);
+      allow delete: if isSignedIn() && isValidId(logId);
+    }
+
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

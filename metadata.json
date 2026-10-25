@@ -1,0 +1,11 @@
+{
+  "name": "Remix Remix MediTrack AI",
+  "description": "Smart medication adherence tracker with forgot password recovery, interactive patient dose progress, and comprehensive caregiver monitoring.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
