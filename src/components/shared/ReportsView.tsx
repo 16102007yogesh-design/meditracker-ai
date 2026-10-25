@@ -1,6 +1,5 @@
 import React from 'react';
 import { 
-  FileText, 
   Download, 
   Share2, 
   CheckCircle2, 
@@ -17,7 +16,6 @@ interface ReportsViewProps {
   medicines: Medicine[];
   patients: PatientRecord[];
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
-  onOpenProjectReport?: () => void;
 }
 
 export const ReportsView: React.FC<ReportsViewProps> = ({
@@ -25,7 +23,6 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   medicines,
   patients,
   showToast,
-  onOpenProjectReport,
 }) => {
   const handleDownloadDoctorReport = () => {
     const reportText = `
@@ -92,52 +89,6 @@ Report digitally certified by MediTrack AI Clinical Engine.
         </button>
       </div>
 
-      {/* Academic Project Report Download Card */}
-      <div className="bg-gradient-to-br from-indigo-900 via-blue-900 to-slate-900 border border-blue-500/30 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2 max-w-2xl">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-1 rounded-full bg-blue-500/30 border border-blue-400/40 text-blue-200">
-              Anna University / B.E. Final Project
-            </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              Verified & Complete
-            </span>
-          </div>
-          <h3 className="text-xl font-black text-white tracking-tight">
-            MediTrack AI — Official Academic Project Report & Documentation
-          </h3>
-          <p className="text-xs text-blue-100/90 leading-relaxed">
-            Full comprehensive academic report matching engineering submission guidelines. Contains Title Page, Bonafide Certificate with Guide & HOD signatures, Abstract, Chapters 1–7, System Architecture (Fig 4.1), Table 3.1 & Table 6.1 Performance Benchmarks, Appendices, and IEEE References.
-          </p>
-          <div className="flex flex-wrap gap-4 pt-1 text-[11px] text-blue-200">
-            <span className="flex items-center gap-1">✓ Bonafide Certificate</span>
-            <span className="flex items-center gap-1">✓ Architectural Comparison (Table 3.1)</span>
-            <span className="flex items-center gap-1">✓ Evaluation Metrics (Table 6.1)</span>
-            <span className="flex items-center gap-1">✓ IEEE Citations</span>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row md:flex-col gap-2.5 shrink-0">
-          <button
-            onClick={() => onOpenProjectReport?.()}
-            className="py-3 px-5 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 text-white font-black text-xs rounded-xl shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
-          >
-            <FileText className="w-4 h-4" />
-            <span>Open & Download Report PDF</span>
-          </button>
-          
-          <a
-            href="/assets/aistudio/final_report_batch_17__1__2___1__1__18d8f90c.pdf"
-            download="Batch17_Sample_Reference_Report.pdf"
-            target="_blank"
-            rel="noreferrer"
-            className="py-2.5 px-4 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Download Reference Template PDF</span>
-          </a>
-        </div>
-      </div>
 
       {/* Grid of Report Modules */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

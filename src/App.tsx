@@ -18,9 +18,7 @@ import {
   Calendar,
   Stethoscope,
   Mic,
-  Sparkles,
-  GraduationCap,
-  FileText
+  Sparkles
 } from 'lucide-react';
 import { 
   UserAccount, 
@@ -57,7 +55,6 @@ import { ScannerModal } from './components/shared/ScannerModal';
 import { SettingsView } from './components/shared/SettingsView';
 import { NotificationModal } from './components/shared/NotificationModal';
 import { VoiceAssistantModal } from './components/shared/VoiceAssistantModal';
-import { ProjectReportModal } from './components/shared/ProjectReportModal';
 import { 
   subscribeToMedicines, 
   saveMedicineToFirestore, 
@@ -121,7 +118,6 @@ export default function App() {
   const [isAddMedOpen, setIsAddMedOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
-  const [isProjectReportOpen, setIsProjectReportOpen] = useState(false);
 
   // 10. Theme State
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -843,21 +839,6 @@ export default function App() {
             >
               <BarChart2 className="w-4 h-4" />
               <span>Doctor Reports</span>
-            </button>
-
-            {/* Academic Project Report & PDF Download */}
-            <button
-              id="nav-tab-project-report"
-              onClick={() => { setIsProjectReportOpen(true); setIsSidebarOpen(false); }}
-              className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-slate-300 hover:text-white bg-gradient-to-r from-blue-950/40 via-indigo-950/30 to-slate-900 border border-blue-500/30 hover:border-blue-400/50 transition-all cursor-pointer shadow-sm group"
-            >
-              <div className="flex items-center gap-3">
-                <GraduationCap className="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" />
-                <span className="font-semibold text-xs">Project Report (PDF)</span>
-              </div>
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/40">
-                PDF
-              </span>
             </button>
 
             {!isCaregiver ? (
