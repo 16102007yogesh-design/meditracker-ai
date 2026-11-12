@@ -26,6 +26,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { Medicine, PatientRecord, UserAccount, Appointment } from '../../types';
+import { askAiAssistant, speakText } from '../../lib/aiService';
 
 interface MessageItem {
   id: string;
@@ -79,7 +80,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
   const [isListening, setIsListening] = useState(false);
   const [isModelSpeaking, setIsModelSpeaking] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('Connecting to Gemini AI Assistant...');
+  const [statusMessage, setStatusMessage] = useState('Connecting to AI Assistant...');
   const [textInput, setTextInput] = useState('');
   const [audioMuted, setAudioMuted] = useState(false);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
@@ -93,7 +94,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
           {
             id: 'init_caregiver',
             sender: 'assistant',
-            text: `Hello ${currentUser?.name ? currentUser.name : 'Doctor / Caregiver'}. I am your MediTrack Clinical Caregiver Copilot powered by Gemini 3.8. I have synced your ${patients.length || 3} monitored patients, adherence records, and clinical risk scores. How can I assist in your rounds or patient triage today?`,
+            text: `Hello ${currentUser?.name ? currentUser.name : 'Doctor / Caregiver'}. I am your MediTrack Clinical Caregiver Copilot AI Assistant. I have synced your ${patients.length || 3} monitored patients, adherence records, and clinical risk scores. How can I assist in your rounds or patient triage today?`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             roleContext: 'caregiver',
           },
@@ -102,7 +103,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
           {
             id: 'init_patient',
             sender: 'assistant',
-            text: `Hello ${currentUser?.name ? currentUser.name : 'there'}! I'm your MediTrack Personal Health Companion powered by Gemini 3.8. I'm here to help you stay on track with your medicines, remind you of your daily schedule, explain when to take pills with food, and support your healthy streak! What questions do you have?`,
+            text: `Hello ${currentUser?.name ? currentUser.name : 'there'}! I'm your MediTrack Personal Health Companion AI Assistant. I'm here to help you stay on track with your medicines, remind you of your daily schedule, explain when to take pills with food, and support your healthy streak! What questions do you have?`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             roleContext: 'patient',
           },
@@ -188,7 +189,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
 
       ws.onopen = () => {
         setIsConnected(true);
-        setStatusMessage(isCaregiver ? 'Gemini 3.8 Live active (Caregiver Copilot)' : 'Gemini 3.8 Live active (Patient Companion)');
+        setStatusMessage(isCaregiver ? 'AI Assistant active (Caregiver Copilot)' : 'AI Assistant active (Patient Companion)');
         // Handshake with role and context
         ws.send(JSON.stringify({
           action: 'configure_role',
@@ -209,7 +210,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
           }
           if (data.audio) {
             setIsModelSpeaking(true);
-            setStatusMessage('Gemini is speaking...');
+            setStatusMessage('AI Assistant is speaking...');
             playPcmAudioChunk(data.audio);
           }
           // SHOW TEXT AS REPLY TOO
@@ -420,7 +421,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
           const spokenText = event.results[0][0].transcript;
           console.log('[SpeechRecognition] Recognized:', spokenText);
           setIsListening(false);
-          setStatusMessage('Processing your question with Gemini...');
+          setStatusMessage('Processing your question with AI Assistant...');
           handleDispatchQuery(spokenText);
         };
 
@@ -476,7 +477,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
       };
 
       setIsListening(true);
-      setStatusMessage('Streaming voice to Gemini 3.8 Live...');
+      setStatusMessage('Streaming voice to AI Assistant...');
     } catch (err: any) {
       console.error('Microphone error:', err);
       setStatusMessage('Microphone access denied: ' + (err?.message || 'Check browser permissions'));
@@ -496,7 +497,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
 
     setTranscriptHistory(prev => [...prev, userMessageItem]);
     setIsGenerating(true);
-    setStatusMessage(`Gemini 3.8 is analyzing as ${isCaregiver ? 'Caregiver Copilot' : 'Patient Companion'}...`);
+    setStatusMessage(`AI Assistant is analyzing as ${isCaregiver ? 'Caregiver Copilot' : 'Patient Companion'}...`);
 
     // Prepare conversational history
     const historyPayload = transcriptHistory.slice(-6).map(m => ({
@@ -505,30 +506,21 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
     }));
 
     try {
-      const response = await fetch('/api/gemini/assistant', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: queryText,
-          history: historyPayload,
-          role: activeRole,
-          userContext: {
-            name: currentUser?.name,
-            email: currentUser?.email,
-            condition: currentUser?.condition,
-            role: activeRole
-          },
-          patientData: isCaregiver ? patients : undefined,
-          medicinesData: medicines,
-          appointments: appointments
-        }),
+      const data = await askAiAssistant({
+        message: queryText,
+        role: activeRole,
+        history: historyPayload,
+        userContext: {
+          name: currentUser?.name,
+          email: currentUser?.email,
+          condition: currentUser?.condition,
+          role: activeRole
+        },
+        patientData: isCaregiver ? patients : undefined,
+        medicinesData: medicines,
+        appointments: appointments
       });
 
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
-      }
-
-      const data = await response.json();
       const replyText = data.reply || "I've processed your request.";
 
       // Scan for actionable medicines in the reply
@@ -562,8 +554,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
       }
 
     } catch (err: any) {
-      console.warn('HTTP API fallback triggered:', err);
-      // Fallback friendly reply so app is 100% resilient
+      console.warn('AI assistant call notice:', err);
       const fallbackText = isCaregiver
         ? `[Caregiver Clinical Roster]\nCurrently monitoring ${patients.length} patients. Robert Taylor has 40% adherence (requires follow-up for hypertension). All prescriptions are saved in Firestore.`
         : `[Personal Medication Companion]\nYou have ${medicines.length} prescriptions on schedule. Your next dose of ${medicines[0]?.name || 'medicine'} is at ${medicines[0]?.time || 'scheduled time'}. Keep your 12-day streak going!`;
@@ -601,39 +592,27 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
     setIsModelSpeaking(true);
 
     try {
-      // Call server-side Gemini TTS (gemini-3.8-flash-lite-tts)
-      const res = await fetch('/api/gemini/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          role: activeRole
-        })
-      });
+      const ttsResult = await speakText(text, activeRole);
+      if (ttsResult.audioBase64) {
+        const audioUrl = `data:audio/wav;base64,${ttsResult.audioBase64}`;
+        const audio = new Audio(audioUrl);
+        activeAudioElementRef.current = audio;
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.audio) {
-          const audioUrl = `data:audio/wav;base64,${data.audio}`;
-          const audio = new Audio(audioUrl);
-          activeAudioElementRef.current = audio;
+        audio.onended = () => {
+          setPlayingMessageId(null);
+          setIsModelSpeaking(false);
+        };
 
-          audio.onended = () => {
-            setPlayingMessageId(null);
-            setIsModelSpeaking(false);
-          };
+        audio.onerror = () => {
+          fallbackBrowserSpeech(text);
+        };
 
-          audio.onerror = () => {
-            fallbackBrowserSpeech(text);
-          };
-
-          await audio.play();
-          return;
-        }
+        await audio.play();
+        return;
       }
       fallbackBrowserSpeech(text);
     } catch (err) {
-      console.warn('TTS server call failed, using browser speech synthesis:', err);
+      console.warn('TTS playback falling back to browser speech:', err);
       fallbackBrowserSpeech(text);
     }
   };
@@ -735,7 +714,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
                     : 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800'
                 }`}>
                   <Radio className="w-3 h-3 text-emerald-500 animate-pulse" />
-                  Gemini 3.8
+                  AI Assistant
                 </span>
               </div>
               <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -825,7 +804,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
                       ? 'bg-gradient-to-tr from-indigo-600 to-blue-600 text-white shadow-indigo-500/30 hover:scale-105'
                       : 'bg-gradient-to-tr from-teal-500 to-cyan-600 text-white shadow-teal-500/30 hover:scale-105')
               }`}
-              title={isListening ? 'Click to pause mic' : 'Click to speak to Gemini'}
+              title={isListening ? 'Click to pause mic' : 'Click to speak to AI Assistant'}
             >
               {isListening ? (
                 <Mic className="w-7 h-7 animate-bounce" />
@@ -981,7 +960,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
                             ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 animate-pulse'
                             : 'bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200 hover:bg-slate-200'
                         }`}
-                        title="Replay Spoken Audio via Gemini Voice TTS"
+                        title="Replay Spoken Audio with AI Voice"
                       >
                         {isPlayingThis ? (
                           <>
@@ -1029,7 +1008,7 @@ export const VoiceAssistantModal: React.FC<VoiceAssistantModalProps> = ({
                 <span className="w-2 h-2 rounded-full bg-cyan-500 animate-bounce delay-150" />
                 <span className="w-2 h-2 rounded-full bg-blue-500 animate-bounce delay-300" />
                 <span className="text-xs font-medium ml-1">
-                  Gemini 3.8 is generating {isCaregiver ? 'clinical analysis' : 'medication advice'}...
+                  AI Assistant is generating {isCaregiver ? 'clinical analysis' : 'medication advice'}...
                 </span>
               </div>
             </div>

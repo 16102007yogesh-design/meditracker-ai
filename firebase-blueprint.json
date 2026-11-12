@@ -53,6 +53,29 @@
         "notes": { "type": "string", "description": "Optional notes or symptom check" }
       },
       "required": ["id", "medicineId", "medicineName", "patientId", "timestamp", "status"]
+    },
+    "Patient": {
+      "title": "Patient",
+      "description": "Monitored patient clinical record and adherence stats",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number", "description": "Patient identifier" },
+        "name": { "type": "string", "description": "Patient full name" },
+        "age": { "type": "number", "description": "Patient age" },
+        "condition": { "type": "string", "description": "Primary diagnosis" },
+        "adherenceRate": { "type": "number", "description": "Calculated adherence percent" },
+        "streakDays": { "type": "number", "description": "Current consecutive streak days" },
+        "status": { "type": "string", "enum": ["stable", "at-risk", "critical"], "description": "Clinical risk status" }
+      },
+      "required": ["id", "name", "condition", "status"]
+    },
+    "TestDoc": {
+      "title": "TestDoc",
+      "description": "Connection test doc",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string" }
+      }
     }
   },
   "firestore": {
@@ -64,9 +87,17 @@
       "schema": { "$ref": "#/entities/Medicine" },
       "description": "Prescriptions and tablets managed by caregivers and tracked by patients"
     },
+    "/patients/{patientId}": {
+      "schema": { "$ref": "#/entities/Patient" },
+      "description": "Monitored patient profiles and clinical health records"
+    },
     "/adherence_logs/{logId}": {
       "schema": { "$ref": "#/entities/AdherenceLog" },
       "description": "Medication adherence audit trail and history logs"
+    },
+    "/test/{testId}": {
+      "schema": { "$ref": "#/entities/TestDoc" },
+      "description": "Connection health check validation path"
     }
   }
 }

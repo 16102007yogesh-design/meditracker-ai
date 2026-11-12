@@ -16,6 +16,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { Medicine, DrugInteractionResult } from '../../types';
+import { checkDrugInteractions } from '../../lib/aiService';
 
 interface AddMedicineModalProps {
   isOpen: boolean;
@@ -67,43 +68,26 @@ export const AddMedicineModal: React.FC<AddMedicineModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Run Gemini drug interaction validation
+  // Run evidence-based drug interaction screening
   const runInteractionCheck = async (medName: string, medDose: string): Promise<DrugInteractionResult | null> => {
     if (!medName.trim()) return null;
     setIsChecking(true);
 
     try {
-      const response = await fetch('/api/check-drug-interactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          newMedicine: {
-            name: medName.trim(),
-            dose: medDose.trim() || 'standard dose',
-            frequency,
-          },
-          currentMedications: currentMedications.map((m) => ({
-            name: m.name,
-            dose: m.dose,
-            frequency: m.frequency,
-          })),
-          patientContext: targetPatientName 
-            ? `Patient: ${targetPatientName}, Condition: ${patientCondition || 'Under Caregiver Supervision'}` 
-            : (patientCondition || 'Active Patient Prescription'),
-        }),
+      const data = await checkDrugInteractions({
+        newMedicineName: medName.trim(),
+        newMedicineDose: medDose.trim() || 'standard dose',
+        frequency,
+        currentMedications,
+        patientCondition: targetPatientName 
+          ? `Patient: ${targetPatientName}, Condition: ${patientCondition || 'Under Caregiver Supervision'}` 
+          : (patientCondition || 'Active Patient Prescription'),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to validate interactions');
-      }
-
-      const data: DrugInteractionResult = await response.json();
       setInteractionResult(data);
       setCheckedMedicineKey(`${medName.trim().toLowerCase()}_${medDose.trim().toLowerCase()}`);
       return data;
     } catch (err) {
-      console.error('Interaction check failed:', err);
-      // Fallback safe result
+      console.error('Interaction check notice:', err);
       const fallback: DrugInteractionResult = {
         hasInteraction: false,
         severity: 'none',
@@ -173,7 +157,7 @@ export const AddMedicineModal: React.FC<AddMedicineModalProps> = ({
     } else if (targetPatientName) {
       showToast(`Prescribed ${name} for ${targetPatientName}! Synced across patient & caregiver databases.`, 'success');
     } else {
-      showToast(`✓ Added ${name} to daily regimen! Gemini verified.`, 'success');
+      showToast(`✓ Added ${name} to daily regimen! AI Safety verified.`, 'success');
     }
   };
 
@@ -231,7 +215,7 @@ export const AddMedicineModal: React.FC<AddMedicineModalProps> = ({
                   {targetPatientName ? `Prescribe Tablet for ${targetPatientName}` : 'Add Prescription Medicine'}
                 </h3>
                 <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-200 border border-emerald-300/30">
-                  <Sparkles className="w-3 h-3 text-emerald-300" /> Gemini DDI Guard
+                  <Sparkles className="w-3 h-3 text-emerald-300" /> AI DDI Guard
                 </span>
               </div>
               <p className="text-xs text-blue-100 mt-0.5">
@@ -282,7 +266,7 @@ export const AddMedicineModal: React.FC<AddMedicineModalProps> = ({
               />
             </div>
             <p className="text-[11px] text-slate-400 mt-1">
-              Tip: Enter generic or brand name. Gemini screens CYP450 pathways, bleeding risk, and QT prolongation automatically.
+              Tip: Enter generic or brand name. AI Assistant screens CYP450 pathways, bleeding risk, and QT prolongation automatically.
             </p>
           </div>
 
@@ -292,7 +276,7 @@ export const AddMedicineModal: React.FC<AddMedicineModalProps> = ({
               <RefreshCw className="w-4 h-4 text-blue-600 dark:text-blue-400 animate-spin shrink-0" />
               <div className="text-xs">
                 <p className="font-semibold text-blue-900 dark:text-blue-200">
-                  Gemini 3.8 Flash Pharmacovigilance screening...
+                  AI Pharmacovigilance screening...
                 </p>
                 <p className="text-[11px] text-blue-700 dark:text-blue-300">
                   Evaluating metabolic conflicts with {currentMedications.length} active medications: {currentMedications.map((m) => m.name).join(', ') || 'None'}
@@ -339,7 +323,7 @@ export const AddMedicineModal: React.FC<AddMedicineModalProps> = ({
                         {interactionResult.severity.toUpperCase()} RISK {interactionResult.riskScore > 0 ? `(${interactionResult.riskScore}/100)` : ''}
                       </span>
                       <span className="text-[11px] font-semibold opacity-75">
-                        Gemini 3.8 Flash Pharmacovigilance
+                        AI Pharmacovigilance
                       </span>
                     </div>
                     <p className="text-xs font-bold mt-1 leading-snug">

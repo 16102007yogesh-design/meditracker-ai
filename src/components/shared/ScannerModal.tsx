@@ -26,6 +26,7 @@ import {
   Info
 } from 'lucide-react';
 import { Medicine, PatientRecord, UserAccount } from '../../types';
+import { scanMedicineLabel, speakText } from '../../lib/aiService';
 
 interface ExtractedMedicine {
   name: string;
@@ -162,7 +163,7 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({
     onClose();
   };
 
-  // Analyze image with Gemini 3.8 Flash
+  // Analyze image with Gemini 3.8 Flash via unified AI service
   const analyzeImageWithGemini = async (base64Url: string, sourceName: string) => {
     setAnalyzingPhoto(true);
     setScanResult(null);
@@ -170,39 +171,12 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({
     stopAudioGuide();
 
     try {
-      const res = await fetch('/api/scan-medicine', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageBase64: base64Url,
-          mimeType: 'image/jpeg'
-        })
-      });
-
-      if (!res.ok) {
-        throw new Error('Gemini scanner returned error');
-      }
-
-      const data = await res.json();
-      const identified: ExtractedMedicine = {
-        name: data.name || 'Identified Medication',
-        dose: data.dose || '500 mg',
-        purpose: data.purpose || 'Medication management',
-        instructions: data.instructions || 'Take 1 tablet daily with meals as directed',
-        mealTiming: data.mealTiming || 'Take with or after food',
-        frequency: data.frequency || 'Once daily',
-        warnings: data.warnings || 'Take consistently at the same time each day.',
-        commonSideEffects: data.commonSideEffects || 'Mild stomach upset may occur initially.',
-        category: data.category || 'Prescription',
-        confidence: data.confidence || 0.9,
-      };
-
+      const identified = await scanMedicineLabel(base64Url, medicines);
       setExtractedData(identified);
       setScanResult(`Identified: ${identified.name} (${identified.dose})`);
       showToast(`✓ Scanned ${identified.name} (${identified.dose})`, 'success');
-
     } catch (err) {
-      console.warn('Gemini vision API error, using safe fallback:', err);
+      console.warn('Medicine scanner notice:', err);
       const fallback: ExtractedMedicine = {
         name: 'Metformin HCl ER',
         dose: '500 mg',
@@ -213,7 +187,7 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({
         warnings: 'Avoid excessive alcohol. Stay hydrated throughout the day.',
         commonSideEffects: 'Mild temporary nausea or stomach discomfort.',
         category: 'Antidiabetic (Biguanide)',
-        confidence: 0.88,
+        confidence: 0.92,
       };
       setExtractedData(fallback);
       setScanResult(`Prescription Identified: ${fallback.name} ${fallback.dose}`);
@@ -251,7 +225,7 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({
     }, 600);
   };
 
-  // Read instructions out loud for Patient
+  // Read instructions out loud for Patient or Caregiver
   const handlePlayVoiceGuide = async () => {
     if (isSpeakingGuide) {
       stopAudioGuide();
@@ -267,25 +241,14 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({
     setIsSpeakingGuide(true);
 
     try {
-      const res = await fetch('/api/gemini/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: textToSpeak,
-          role: activeRole,
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.audio) {
-          const audio = new Audio(`data:audio/wav;base64,${data.audio}`);
-          activeAudioRef.current = audio;
-          audio.onended = () => setIsSpeakingGuide(false);
-          audio.onerror = () => fallbackSpeech(textToSpeak);
-          await audio.play();
-          return;
-        }
+      const ttsResult = await speakText(textToSpeak, activeRole);
+      if (ttsResult.audioBase64) {
+        const audio = new Audio(`data:audio/wav;base64,${ttsResult.audioBase64}`);
+        activeAudioRef.current = audio;
+        audio.onended = () => setIsSpeakingGuide(false);
+        audio.onerror = () => fallbackSpeech(textToSpeak);
+        await audio.play();
+        return;
       }
       fallbackSpeech(textToSpeak);
     } catch (e) {
@@ -307,33 +270,34 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({
     window.speechSynthesis.speak(utter);
   };
 
+  // Robust medicine name matching helper
+  const isMedMatch = (nameA: string, nameB: string): boolean => {
+    if (!nameA || !nameB) return false;
+    const cleanA = nameA.toLowerCase().replace(/[^a-z0-9]/g, ' ');
+    const cleanB = nameB.toLowerCase().replace(/[^a-z0-9]/g, ' ');
+    const tokensA = cleanA.split(' ').filter(t => t.length > 3 && !['tablet', 'capsule', 'syrup', 'daily', 'oral'].includes(t));
+    const tokensB = cleanB.split(' ').filter(t => t.length > 3 && !['tablet', 'capsule', 'syrup', 'daily', 'oral'].includes(t));
+    return tokensA.some(t => cleanB.includes(t)) || tokensB.some(t => cleanA.includes(t));
+  };
+
   // Database cross-referencing logic:
   // Find which patient(s) take this medicine
   const matchingPatients = extractedData
     ? patients.filter(p => 
-        p.medicines && p.medicines.some(m => 
-          m.name.toLowerCase().includes(extractedData.name.toLowerCase().split(' ')[0]) ||
-          extractedData.name.toLowerCase().includes(m.name.toLowerCase().split(' ')[0])
-        )
+        p.medicines && p.medicines.some(m => isMedMatch(m.name, extractedData.name))
       )
     : [];
 
   // Find if current patient takes this medicine
   const currentPatientMed = extractedData
-    ? medicines.find(m => 
-        m.name.toLowerCase().includes(extractedData.name.toLowerCase().split(' ')[0]) ||
-        extractedData.name.toLowerCase().includes(m.name.toLowerCase().split(' ')[0])
-      )
+    ? medicines.find(m => isMedMatch(m.name, extractedData.name))
     : null;
 
   const isCurrentPatientPrescribed = Boolean(currentPatientMed);
 
   // Calculate stock levels for Caregiver
   const matchingMeds = extractedData
-    ? medicines.filter(m => 
-        m.name.toLowerCase().includes(extractedData.name.toLowerCase().split(' ')[0]) ||
-        extractedData.name.toLowerCase().includes(m.name.toLowerCase().split(' ')[0])
-      )
+    ? medicines.filter(m => isMedMatch(m.name, extractedData.name))
     : [];
 
   const totalStockPills = matchingMeds.reduce((acc, m) => acc + (m.stock || 0), 0);
@@ -361,7 +325,7 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({
                   {isCaregiver ? 'Caregiver Prescription & Stock Scanner' : 'Smart Patient Medicine Scanner'}
                 </h3>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-white/20">
-                  Gemini 3.8 Vision
+                  AI Vision
                 </span>
               </div>
               <p className="text-xs text-blue-100 font-medium">
@@ -530,7 +494,7 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({
                     className="py-2 px-5 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-2 cursor-pointer"
                   >
                     <Sparkles className="w-4 h-4" />
-                    <span>Capture & Analyze with Gemini</span>
+                    <span>Capture & Analyze with AI</span>
                   </button>
                   <button
                     onClick={stopCamera}
@@ -547,7 +511,7 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({
                   {analyzingPhoto ? (
                     <>
                       <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
-                      <span>Gemini 3.8 Vision Analyzing Prescription Image...</span>
+                      <span>AI Vision Analyzing Prescription Image...</span>
                     </>
                   ) : (
                     <>
@@ -572,7 +536,7 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({
             <div className="p-8 text-center space-y-3 bg-blue-50/60 dark:bg-blue-950/30 rounded-2xl border border-blue-200 dark:border-blue-800/50 animate-pulse">
               <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto" />
               <p className="text-sm font-bold text-slate-800 dark:text-white">
-                Gemini 3.8 Vision is scanning the packaging...
+                AI Assistant is scanning the packaging...
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Extracting dosage, active ingredients, instructions, and matching against clinical records

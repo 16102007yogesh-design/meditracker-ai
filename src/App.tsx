@@ -904,7 +904,7 @@ export default function App() {
                   ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' 
                   : 'bg-teal-500/20 text-teal-300 border-teal-500/40'
               }`}>
-                Gemini 3.8
+                AI Assistant
               </span>
             </button>
 
@@ -1132,7 +1132,7 @@ export default function App() {
         </div>
       </main>
 
-      {/* Floating Voice Companion (Gemini 3.8) Button */}
+      {/* Floating Voice Companion (AI Assistant) Button */}
       <button
         id="floating-voice-assistant-button"
         onClick={() => setIsVoiceModalOpen(true)}
@@ -1141,18 +1141,18 @@ export default function App() {
             ? 'bg-gradient-to-tr from-indigo-600 via-blue-600 to-emerald-600 shadow-indigo-500/35'
             : 'bg-gradient-to-tr from-teal-500 via-cyan-500 to-blue-600 shadow-cyan-500/35'
         }`}
-        title={`Open Gemini 3.8 ${isCaregiver ? 'Clinical Caregiver Copilot' : 'Personal Health Companion'}`}
+        title={`Open ${isCaregiver ? 'Clinical Caregiver Copilot' : 'Personal Health Companion'}`}
       >
         <div className="relative">
           {isCaregiver ? <Stethoscope className="w-5 h-5 animate-pulse" /> : <Mic className="w-5 h-5 animate-pulse" />}
           <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full animate-ping" />
         </div>
         <span className="hidden sm:inline-block pr-1 font-semibold">
-          {isCaregiver ? 'Gemini Caregiver Copilot' : 'Gemini Voice Companion'}
+          {isCaregiver ? 'AI Caregiver Copilot' : 'AI Voice Assistant'}
         </span>
       </button>
 
-      {/* Voice Assistant Modal with Gemini 3.8 (Live Voice & Resilient REST + Audio Replay) */}
+      {/* Voice Assistant Modal with AI Assistant (Live Voice & Resilient REST + Audio Replay) */}
       <VoiceAssistantModal
         isOpen={isVoiceModalOpen}
         onClose={() => setIsVoiceModalOpen(false)}

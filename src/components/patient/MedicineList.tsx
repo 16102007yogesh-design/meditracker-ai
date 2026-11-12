@@ -61,7 +61,7 @@ export const MedicineList: React.FC<MedicineListProps> = ({
           <div className="flex items-center gap-2">
             <h2 className="text-2xl font-black tracking-tight">Prescription Medications 💊</h2>
             <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md">
-              <Sparkles className="w-3 h-3 text-emerald-300" /> Gemini DDI Screened
+              <Sparkles className="w-3 h-3 text-emerald-300" /> AI Safety Screened
             </span>
           </div>
           <p className="text-xs text-blue-100 mt-1">
@@ -178,7 +178,7 @@ export const MedicineList: React.FC<MedicineListProps> = ({
                         <span className="truncate">
                           {hasDdi 
                             ? `DDI Alert: ${med.interactionCheck.severity.toUpperCase()} risk`
-                            : 'Gemini Safety Verified: No negative interactions'
+                            : 'AI Safety Verified: No negative interactions'
                           }
                         </span>
                       </div>

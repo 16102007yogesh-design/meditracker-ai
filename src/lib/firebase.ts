@@ -8,7 +8,8 @@ import {
   User as FirebaseUser
 } from 'firebase/auth';
 import { 
-  getFirestore, 
+  getFirestore,
+  initializeFirestore, 
   collection, 
   doc, 
   setDoc, 
@@ -34,10 +35,19 @@ export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
-// Initialize Firestore with specific database ID if present
-export const db = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
-  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-  : getFirestore(app);
+// Initialize Firestore with specific database ID and robust long-polling detection for iframe environments
+export const db = (() => {
+  const dbId = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
+    ? firebaseConfig.firestoreDatabaseId
+    : undefined;
+  try {
+    return initializeFirestore(app, {
+      experimentalAutoDetectLongPolling: true,
+    }, dbId);
+  } catch {
+    return dbId ? getFirestore(app, dbId) : getFirestore(app);
+  }
+})();
 
 // MANDATORY CONNECTION TEST
 export async function testConnection() {
